@@ -24,10 +24,16 @@ class WeatherViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
+    private val _selectedCity = MutableStateFlow("Delhi")
+    val selectedCity = _selectedCity.asStateFlow()
+
     fun fetchWeather(city: String) {
+        val normalizedCity = city.trim().ifEmpty { "Delhi" }
+        _selectedCity.value = normalizedCity
+
         viewModelScope.launch {
             _uiState.value = WeatherUiState.Loading
-            repository.getWeather(city)
+            repository.getWeather(normalizedCity)
                 .onSuccess { _uiState.value = WeatherUiState.Success(it) }
                 .onFailure { _uiState.value = WeatherUiState.Error(it.message ?: "Unknown error") }
         }
