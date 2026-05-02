@@ -21,7 +21,7 @@ class GeminiService @Inject constructor(
     
     private val generativeModel by lazy {
         GenerativeModel(
-            modelName = "gemini-pro",
+            modelName = "gemini-1.5-flash",
             apiKey = apiKey
         )
     }
@@ -49,6 +49,8 @@ class GeminiService @Inject constructor(
                 You are an expert farmer advisor for Indian agriculture.
                 Provide practical, actionable advice based on Indian farming practices.
                 Keep response concise (max 150 words).
+                Respond in simple Hindi + English mix for better farmer understanding.
+                Include 3 bullet action steps when possible.
             """.trimIndent()
 
             Timber.d("Sending request to Gemini API")

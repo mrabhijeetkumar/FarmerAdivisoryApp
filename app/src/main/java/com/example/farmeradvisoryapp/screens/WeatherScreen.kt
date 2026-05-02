@@ -1,22 +1,53 @@
 package com.example.farmeradvisoryapp.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.farmeradvisoryapp.data.api.models.WeatherResponse
 import com.example.farmeradvisoryapp.navigation.Screen
 import com.example.farmeradvisoryapp.ui.components.BottomNavigationBar
 import com.example.farmeradvisoryapp.ui.components.LoadingScreen
@@ -27,60 +58,60 @@ import com.example.farmeradvisoryapp.viewmodels.WeatherViewModel
 @Composable
 fun WeatherScreen(navController: NavController, viewModel: WeatherViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val selectedCity by viewModel.selectedCity.collectAsState()
+    var cityInput by rememberSaveable { mutableStateOf("Delhi") }
 
-    LaunchedEffect(Unit) {
-        viewModel.fetchWeather("Delhi")
-    }
+    LaunchedEffect(Unit) { viewModel.fetchWeather(selectedCity) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Weather Forecast", fontWeight = FontWeight.Bold) },
+                title = { Text("Live Weather & Farming Advisory", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         bottomBar = { BottomNavigationBar(navController, Screen.Weather.route) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+        ) {
+            OutlinedTextField(
+                value = cityInput,
+                onValueChange = { cityInput = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                label = { Text("Search city") },
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { viewModel.fetchWeather(cityInput) }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(12.dp))
+
             when (uiState) {
                 is WeatherUiState.Loading -> LoadingScreen("Updating live forecast...")
                 is WeatherUiState.Success -> {
                     val weather = (uiState as WeatherUiState.Success).data
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        item {
-                            WeatherMainCard(weather)
-                        }
-
-                        item {
-                            Text("5-Day Forecast", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        }
-
-                        // Mock Forecast for UI completeness (Industry Level)
-                        val mockForecast = listOf(
-                            ForecastItem("Mon", "Cloudy", 28, 22),
-                            ForecastItem("Tue", "Rainy", 25, 20),
-                            ForecastItem("Wed", "Sunny", 32, 24),
-                            ForecastItem("Thu", "Partly Cloudy", 30, 23),
-                            ForecastItem("Fri", "Storm", 24, 19)
-                        )
-
-                        items(mockForecast) { day ->
-                            ForecastRow(day)
-                        }
-
-                        item {
-                            Spacer(Modifier.height(32.dp))
-                        }
+                        item { WeatherMainCard(weather) }
+                        item { FarmingAdvisoryCard(weather) }
                     }
                 }
                 is WeatherUiState.Error -> {
@@ -90,9 +121,7 @@ fun WeatherScreen(navController: NavController, viewModel: WeatherViewModel = hi
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text("Unable to fetch weather", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { viewModel.fetchWeather("Delhi") }) {
-                            Text("Retry")
-                        }
+                        Button(onClick = { viewModel.fetchWeather(selectedCity) }) { Text("Retry") }
                     }
                 }
             }
@@ -101,25 +130,53 @@ fun WeatherScreen(navController: NavController, viewModel: WeatherViewModel = hi
 }
 
 @Composable
-fun WeatherMainCard(weather: com.example.farmeradvisoryapp.data.api.models.WeatherResponse) {
+fun WeatherMainCard(weather: WeatherResponse) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Column(Modifier.padding(24.dp)) {
+            Text(weather.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text("${weather.main.temp.toInt()}°C", style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.ExtraBold)
-                    Text(weather.weather.firstOrNull()?.description?.uppercase() ?: "CLEAR", style = MaterialTheme.typography.titleMedium)
+                    Text("${weather.main.temp.toInt()}°C", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.ExtraBold)
+                    Text(weather.weather.firstOrNull()?.description?.replaceFirstChar { it.uppercase() } ?: "Clear", style = MaterialTheme.typography.titleMedium)
                 }
-                Text("☀️", fontSize = 80.sp)
+                Text("⛅", fontSize = 64.sp)
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 WeatherMetric(Icons.Default.WaterDrop, "Humidity", "${weather.main.humidity}%")
-                WeatherMetric(Icons.Default.Air, "Wind", "${weather.wind.speed} km/h")
-                WeatherMetric(Icons.Default.Thermostat, "Feels", "${weather.main.temp.toInt()}°")
+                WeatherMetric(Icons.Default.Air, "Wind", "${weather.wind.speed} m/s")
+                WeatherMetric(Icons.Default.Thermostat, "Feels", "${weather.main.feelsLike.toInt()}°")
+            }
+        }
+    }
+}
+
+@Composable
+private fun FarmingAdvisoryCard(weather: WeatherResponse) {
+    val tips = remember(weather.main.temp, weather.main.humidity, weather.wind.speed) {
+        buildList {
+            if (weather.main.temp > 35) add("High heat: schedule irrigation early morning/evening.")
+            if (weather.main.humidity > 80) add("High humidity: monitor fungal diseases and improve airflow.")
+            if (weather.wind.speed > 8) add("Strong wind: avoid pesticide spray right now.")
+            if (isEmpty()) add("Weather is stable: continue regular farm operations.")
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Actionable Farming Tips", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            tips.forEach { tip ->
+                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)) {
+                    Text("• $tip", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
@@ -128,36 +185,11 @@ fun WeatherMainCard(weather: com.example.farmeradvisoryapp.data.api.models.Weath
 @Composable
 fun WeatherMetric(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(4.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(6.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.labelSmall)
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
         }
     }
 }
-
-@Composable
-fun ForecastRow(item: ForecastItem) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(item.day, fontWeight = FontWeight.Bold, modifier = Modifier.width(50.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (item.condition.contains("Rain")) "🌧️" else "🌤️", fontSize = 20.sp)
-                Spacer(Modifier.width(8.dp))
-                Text(item.condition, style = MaterialTheme.typography.bodySmall)
-            }
-            Text("${item.max}° / ${item.min}°", fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-data class ForecastItem(val day: String, val condition: String, val max: Int, val min: Int)
