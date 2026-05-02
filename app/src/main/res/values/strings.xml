@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">FarmerAdvisoryApp</string>
+    <string name="title_activity_home_screen">HomeScreen</string>
+    <string name="title_activity_weather_screen">WeatherScreen</string>
+    <string name="title_activity_crops_screen">CropsScreen</string>
+    <string name="title_activity_expert_screen">ExpertScreen</string>
+    <string name="title_activity_gemini_service">GeminiService</string>
+    <string name="title_activity_data_models">DataModels</string>
+    <string name="title_activity_navigation">navigation</string>
+</resources>
